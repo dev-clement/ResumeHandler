@@ -1,0 +1,62 @@
+= 📚 Database Schema: ResumeHandler
+:author: dev_clement
+:revnumber: 1.0
+:toc: left
+:toclevels: 3
+:icons: font
+:sectnums:
+
+== Introduction
+This document provides a comprehensive overview of the database architecture for the ResumeHandler project. It details the SQL structure designed to support flexible resume management and contextual skill tracking.
+
+== Database Architecture
+The application utilizes a normalized relational structure to ensure data integrity and scalability. By leveraging Many-to-Many (M2M) relationships, the system supports complex ownership models and reusable data entities.
+
+=== Relational Schema (ERD)
+The visual representation of the database is maintained in a dedicated Mermaid file to ensure high-quality rendering on supported platforms.
+
+👉 link:Database-schema.md[Consult the (Mermaid) database schema]
+
+== Database Explanation
+This section breaks down the purpose of each table and the logic behind their interactions.
+
+=== 1. Identity & Ownership (User <-> Resume)
+
+User: The primary entity for authentication. It uses a uuid as a Primary Key (PK) for enhanced security and an email with a Unique Key (UK) constraint to prevent duplicate accounts.
+
+Resume: Represents a single CV document. It is decoupled from the User to allow for high flexibility.
+
+User_m2m_resume: This is a pivot table implementing a Many-to-Many relationship.
+- Why? This allows a single user to own multiple resumes (e.g., different languages or roles). It also prepares the system for future collaborative features where multiple users might share access to the same resume.
+
+=== 2. Resume Content Sections
+
+ContactInfo: Stores contact details (phone, LinkedIn, etc.) specific to a resume. This allows users to customize their contact information for different versions of their CV.
+
+Experience: Stores professional history. It includes a is_current boolean to handle ongoing positions.
+
+Education: Stores academic background, degrees, and institutions.
+
+=== 3. Contextual Skill System (Skill <-> Resume)
+The skill management use a specialized M2M structure:
+
+Skill: A global catalog of unique technical skills (e.g., "C#", "Docker"). The name has a UK constraint to ensure a normalized list.
+
+Skill_m2m_resume: This pivot table does more than just link a skill to a resume; it provides context.
+
+- Contextual Validation: It includes optional foreign keys to the Experience and Education tables. This allows the application to show where a skill was used or learned.
+- Proficiency Level: The level field tracks the expertise (Beginner to Expert) specific to that resume context.
+
+=== Key Design Points Recap
+User/Resume Decoupling: Via the User_m2m_resume table, allowing for collaboration or multi-ownership.
+
+Contextual Skills: Skills are not just a flat list; they are justified by being linked to specific career milestones.
+
+== Application Flow (Coming Soon)
+This section will contain sequence diagrams for authentication and resume generation.
+
+== API Endpoints
+Endpoint documentation will be generated via Swagger, but a summary of critical routes will be listed here.
+
+[NOTE]
+This documentation is updated with every major evolution of the data schema or backend architecture.

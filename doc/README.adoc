@@ -1,0 +1,195 @@
+= 🏗️ System Architecture: ResumeHandler
+:author: dev_clement
+:revnumber: 1.0
+:toc: left
+:toclevels: 3
+:icons: font
+:sectnums:
+
+== Introduction
+This document describes the high-level technical architecture of the application, showing how the different layers interact from the user interface down to the persistent storage.
+
+== High-Level Component Diagram
+
+The following diagram visualizes the flow of data through the system stack.
+
+```mermaid
+graph TD
+User((User))
+
+subgraph "Frontend (Angular)"
+    UI[User Interface]
+    State[State Management]
+end
+
+subgraph "Backend (ASP.NET Core)"
+    API[Web API Controllers]
+    Logic[Business Logic / Services]
+    Repo[Repository Layer]
+    EF[Entity Framework Core]
+end
+
+subgraph "Data Tier (SQL)"
+    DB[(SQL Database)]
+end
+
+%% Interactions
+User <--> UI
+UI <--> State
+State <--> API
+API <--> Logic
+Logic <--> Repo
+Repo <--> EF
+EF <--> DB
+
+%% Styling
+style UI fill:#dd0031,color:#fff
+style API fill:#512bd4,color:#fff
+style DB fill:#336791,color:#fff
+```
+
+== Layer Responsibilities
+
+=== 1. Frontend (Angular)
+
+UI: Responsible for rendering the reactive resume forms and dynamic user's visualizations.
+
+State: Manages local data caching, user session state, and asynchronous API communication against the backend.
+
+=== 2. Backend (ASP.NET Core)
+
+Controllers: Serve as the RESTful entry points for all incoming HTTP requests.
+
+Services: Contain the core business logic, such as the complex rules for linking skills to specific milestones.
+
+Repositories: Provide an abstraction layer over data access to keep the logic decoupled from the database.
+
+EF Core: Handles the Object-Relational Mapping (ORM) between C# models and the PostgreSQL schema.
+
+=== 4. Use cases
+Show all the possibility that the application let users do in order to create, read, update and delete their
+resume. You can see the diagram in the link:use-cases/db-use-case.md[Use case database]
+
+This diagram represents all the operation a user and an admin can operate against the database.
+
+```mermaid
+graph LR
+    %% Actors
+    User((Authenticated User))
+    Admin((System Admin))
+
+    subgraph "ResumeHandler System"
+        UC1(Create/Edit Resume)
+        UC2(Manage Experiences)
+        UC3(Attach Skills to Sections)
+        UC4(Export Resume to PDF)
+        UC5(Manage Account Settings)
+        UC6(Manage Skill Catalog)
+    end
+
+    %% Relationships
+    User --> UC1
+    User --> UC2
+    User --> UC3
+    User --> UC4
+    User --> UC5
+
+    Admin --> UC6
+    Admin --> UC5
+
+    %% Styling
+    style User fill:#ff,stroke:#333,stroke-width:2px
+    style Admin fill:#ff,stroke:#333,stroke-width:2px
+```
+
+=== 3. Database (SQL)
+
+Stores persistent, normalized data using the advanced Many-to-Many relationships defined in the link:database/Database-schema.md[Database Schema].
+
+```mermaid
+erDiagram
+    %% Many-to-Many Relationships for Resume Ownerships
+    User ||--o{ User_m2m_resume : uses
+    Resume ||--o{ User_m2m_resume : referenced_by
+
+    Resume ||--o{ Experience : contains
+    Resume ||--o{ Education : contains
+    Resume ||--o| ContactInfo : includes
+
+    %% Many-to-Many Relationships for Skills
+    Resume ||--o{ Skill_m2m_resume : uses
+    Skill ||--o{ Skill_m2m_resume : referenced_by
+    Experience ||--o{ Skill_m2m_resume : highlights
+    Education ||--o{ Skill_m2m_resume : highlights
+
+    User {
+        uuid id PK
+        string username
+        string email UK
+        string password_hash
+        datetime created_at
+    }
+
+    Resume {
+        int id PK
+        string title "Ex: Fullstack Dev CV"
+        text summary
+        datetime created_at
+        datetime updated_at
+    }
+
+    User_m2m_resume {
+        int id PK
+        int fk_user_id FK "Link to User"
+        int fk_resume_id FK "Link to Resume"
+    }
+
+    ContactInfo {
+        int id PK
+        int resume_id FK
+        string phone
+        string linkedin_url
+        string github_url
+        string website
+        string city
+    }
+
+    Experience {
+        int id PK
+        int resume_id FK
+        string company_name
+        string job_title
+        datetime start_date
+        datetime end_date
+        text description
+        boolean is_current
+    }
+
+    Education {
+        int id PK
+        int resume_id FK
+        string institution
+        string degree
+        string field_of_study
+        datetime start_date
+        datetime end_date
+    }
+
+    Skill {
+        int id PK
+        string name UK "Ex: C++, SQL, Docker"
+    }
+
+    Skill_m2m_resume {
+        int id PK
+        int resume_id FK
+        int skill_id FK
+        int experience_id FK "Optional: Link to work"
+        int education_id FK "Optional: Link to degree"
+        string level "Beginner | Intermediate | Expert"
+    }
+```
+
+[TIP]
+
+This architecture is designed for scalability, allowing the frontend and backend to be deployed independently (e.g., using Docker containers).
